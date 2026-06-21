@@ -64,6 +64,7 @@ export default function ConversationView({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [live, setLive] = useState(true);
   const [showSheet, setShowSheet] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Fusiona los mensajes que vuelve a mandar el servidor (p.ej. tras enviar
   // una respuesta y router.refresh()).
@@ -116,6 +117,44 @@ export default function ConversationView({
   // prevalece sobre el automático. El score sigue siendo el calculado.
   const tier = tierOverride ?? lead.tier;
   const name = sender?.name?.trim() || fallbackName;
+
+  // Datos del lead en formato hoja (encabezado + valor), para mostrar y exportar.
+  const nombreReal = lead.nombre || (name.startsWith("Visitante #") ? "" : name);
+  const sheet: { label: string; value: string }[] = [
+    { label: "Nombre / Empresa", value: nombreReal },
+    { label: "Teléfono", value: lead.telefono ?? "" },
+    { label: "Correo", value: lead.email ?? "" },
+    { label: "Curso de interés", value: lead.intereses.join(", ") },
+  ];
+
+  // Copia la fila de valores separada por tabs: al pegar en Excel/Sheets cae en
+  // celdas separadas (una fila por lead, bajo tus encabezados).
+  async function copyRow() {
+    try {
+      await navigator.clipboard.writeText(sheet.map((f) => f.value).join("\t"));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* el navegador bloqueó el portapapeles */
+    }
+  }
+
+  // Descarga un CSV (encabezados + valores) listo para abrir en Excel.
+  function downloadCsv() {
+    const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const csv =
+      sheet.map((f) => esc(f.label)).join(",") +
+      "\n" +
+      sheet.map((f) => esc(f.value)).join(",");
+    // BOM para que Excel respete los acentos.
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `lead-${conversationId}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -179,37 +218,57 @@ export default function ConversationView({
             </span>
           </button>
 
-          {/* Datos del lead en formato hoja (estilo Excel) */}
+          {/* Datos del lead en formato hoja horizontal (estilo Excel) */}
           {showSheet && (
-            <table className="mt-2 w-full table-fixed border-collapse text-xs">
-              <tbody>
-                {[
-                  {
-                    label: "Nombre / Empresa",
-                    value: lead.nombre || (name.startsWith("Visitante #") ? null : name),
-                  },
-                  { label: "Teléfono", value: lead.telefono },
-                  { label: "Correo", value: lead.email },
-                  {
-                    label: "Curso de interés",
-                    value: lead.intereses.length ? lead.intereses.join(", ") : null,
-                  },
-                ].map((row) => (
-                  <tr key={row.label}>
-                    <th className="w-2/5 border border-zinc-200 bg-zinc-100 px-2 py-1.5 text-left align-top font-semibold uppercase tracking-wide text-[10px] text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
-                      {row.label}
-                    </th>
-                    <td className="border border-zinc-200 px-2 py-1.5 align-top text-zinc-800 dark:border-zinc-700 dark:text-zinc-200">
-                      {row.value ? (
-                        <span className="break-words">{row.value}</span>
-                      ) : (
-                        <span className="text-zinc-300 dark:text-zinc-600">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="mt-2">
+              <div className="overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-700">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr>
+                      {sheet.map((f) => (
+                        <th
+                          key={f.label}
+                          className="whitespace-nowrap border-b border-r border-zinc-200 bg-zinc-100 px-2 py-1.5 text-left font-semibold uppercase tracking-wide text-[10px] text-zinc-500 last:border-r-0 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+                        >
+                          {f.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      {sheet.map((f) => (
+                        <td
+                          key={f.label}
+                          className="whitespace-nowrap border-r border-zinc-200 px-2 py-1.5 text-zinc-800 last:border-r-0 dark:border-zinc-700 dark:text-zinc-200"
+                        >
+                          {f.value || (
+                            <span className="text-zinc-300 dark:text-zinc-600">—</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={copyRow}
+                  className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  {copied ? "✓ Copiado" : "📋 Copiar fila"}
+                </button>
+                <button
+                  type="button"
+                  onClick={downloadCsv}
+                  className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  ⬇ CSV
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
