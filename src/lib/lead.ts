@@ -12,9 +12,19 @@ export type LeadTier = "caliente" | "tibio" | "frio";
 /** Resumen ligero del lead para listados/tablero (sin el detalle de razones). */
 export type LeadSummary = {
   score: number;
+  /** Tier efectivo: el manual si la persona lo movió, si no el automático. */
   tier: LeadTier;
+  /** Tier que calcularían las reglas a partir de los mensajes (ignora override). */
+  tierAuto: LeadTier;
+  /** True si el tier viene de un override manual (movido en el tablero). */
+  manual: boolean;
   nombre: string | null;
 };
+
+/** Type guard para validar un tier que llega como string (custom_attribute/form). */
+export function isLeadTier(v: unknown): v is LeadTier {
+  return v === "caliente" || v === "tibio" || v === "frio";
+}
 
 export type LeadInsights = {
   nombre: string | null;

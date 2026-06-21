@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Message, Sender } from "@/lib/chatwoot";
 import { initials } from "@/lib/format";
-import { analizarLead, TIER_LABEL } from "@/lib/lead";
+import { analizarLead, TIER_LABEL, type LeadTier } from "@/lib/lead";
 import IaToggle from "./IaToggle";
 import ReplyBox from "./ReplyBox";
 import LiveThread from "./LiveThread";
@@ -49,6 +49,7 @@ export default function ConversationView({
   status,
   iaPaused,
   leadAttrs,
+  tierOverride,
   fallbackName,
 }: {
   conversationId: number;
@@ -57,6 +58,7 @@ export default function ConversationView({
   status: string;
   iaPaused: boolean;
   leadAttrs: { key: string; label: string; value: string }[];
+  tierOverride?: LeadTier;
   fallbackName: string;
 }) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -109,6 +111,9 @@ export default function ConversationView({
     [messages, sender],
   );
 
+  // Tier efectivo: el override manual (si la persona lo movió en el tablero)
+  // prevalece sobre el automático. El score sigue siendo el calculado.
+  const tier = tierOverride ?? lead.tier;
   const name = sender?.name?.trim() || fallbackName;
 
   return (
@@ -169,17 +174,19 @@ export default function ConversationView({
           </h2>
           <div className="flex items-center gap-3">
             <span
-              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-bold ring-1 transition-all duration-500 ${TIER_STYLE[lead.tier]}`}
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-bold ring-1 transition-all duration-500 ${TIER_STYLE[tier]}`}
             >
               {lead.score}
             </span>
             <div className="min-w-0">
               <span
-                className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ring-1 transition-colors duration-500 ${TIER_STYLE[lead.tier]}`}
+                className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ring-1 transition-colors duration-500 ${TIER_STYLE[tier]}`}
               >
-                {TIER_LABEL[lead.tier]}
+                {TIER_LABEL[tier]}
               </span>
-              <p className="mt-1 text-[11px] text-zinc-400">de 100</p>
+              <p className="mt-1 text-[11px] text-zinc-400">
+                de 100{tierOverride ? " · 📌 movido a mano" : ""}
+              </p>
             </div>
           </div>
           {lead.razones.length > 0 && (

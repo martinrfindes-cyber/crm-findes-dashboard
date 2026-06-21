@@ -1,4 +1,5 @@
 import "server-only";
+import type { LeadTier } from "./lead";
 
 /**
  * Cliente server-side de la API de Chatwoot.
@@ -160,6 +161,28 @@ export async function setIaPaused(
     ...(conv.custom_attributes ?? {}),
     [IA_PAUSED_KEY]: paused,
   };
+  await api(`/conversations/${conversationId}/custom_attributes`, {
+    method: "POST",
+    body: JSON.stringify({ custom_attributes: merged }),
+  });
+}
+
+/**
+ * Override manual del tier del lead (la persona a cargo mueve la conversación
+ * de columna en el tablero). Se guarda como custom_attribute de la conversación
+ * para que sea permanente y prevalezca sobre el cálculo automático. Pasar `null`
+ * quita el override y vuelve al tier automático.
+ */
+export const LEAD_TIER_KEY = "tier_manual";
+
+export async function setLeadTier(
+  conversationId: number,
+  tier: LeadTier | null,
+): Promise<void> {
+  const conv = await getConversation(conversationId);
+  const merged = { ...(conv.custom_attributes ?? {}) };
+  if (tier) merged[LEAD_TIER_KEY] = tier;
+  else delete merged[LEAD_TIER_KEY];
   await api(`/conversations/${conversationId}/custom_attributes`, {
     method: "POST",
     body: JSON.stringify({ custom_attributes: merged }),

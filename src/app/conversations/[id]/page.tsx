@@ -6,14 +6,16 @@ import {
   listMessages,
   chatwootConfigured,
   isIaPaused,
+  LEAD_TIER_KEY,
   ChatwootError,
   type Message,
   type Sender,
 } from "@/lib/chatwoot";
+import { isLeadTier, type LeadTier } from "@/lib/lead";
 import ConversationView from "./ConversationView";
 
 // Atributos internos (no son datos de lead): no se muestran en "Datos capturados".
-const INTERNAL_ATTRS = new Set(["ia_pausada"]);
+const INTERNAL_ATTRS = new Set(["ia_pausada", LEAD_TIER_KEY]);
 
 /** Junta los atributos de lead (custom + additional) en pares legibles. */
 function leadFields(
@@ -63,6 +65,7 @@ export default async function ConversationPage({
   let status = "open";
   let iaPaused = false;
   let leadAttrs: { key: string; label: string; value: string }[] = [];
+  let tierOverride: LeadTier | undefined;
   let loadError: string | null = null;
 
   try {
@@ -78,6 +81,8 @@ export default async function ConversationPage({
     // origen, curso, etc.). Se omite additional_attributes a propósito: ahí Chatwoot
     // guarda telemetría del navegador (Browser, Referer, idioma…), no datos de lead.
     leadAttrs = leadFields(conv.custom_attributes, sender?.custom_attributes);
+    const rawTier = conv.custom_attributes?.[LEAD_TIER_KEY];
+    if (isLeadTier(rawTier)) tierOverride = rawTier;
   } catch (err) {
     if (err instanceof ChatwootError && err.status === 404) notFound();
     loadError =
@@ -107,6 +112,7 @@ export default async function ConversationPage({
         status={status}
         iaPaused={iaPaused}
         leadAttrs={leadAttrs}
+        tierOverride={tierOverride}
         fallbackName={`Visitante #${conversationId}`}
       />
     </Shell>
