@@ -63,6 +63,7 @@ export default function ConversationView({
 }) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [live, setLive] = useState(true);
+  const [showSheet, setShowSheet] = useState(false);
 
   // Fusiona los mensajes que vuelve a mandar el servidor (p.ej. tras enviar
   // una respuesta y router.refresh()).
@@ -149,11 +150,17 @@ export default function ConversationView({
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
             Lead
           </h2>
-          <div className="flex items-center gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-200 text-base font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+          <button
+            type="button"
+            onClick={() => setShowSheet((v) => !v)}
+            aria-expanded={showSheet}
+            title="Ver datos en formato tabla"
+            className="flex w-full items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-base font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
               {initials(lead.nombre || name)}
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 {lead.nombre || name}
               </p>
@@ -164,7 +171,46 @@ export default function ConversationView({
                 <p className="truncate text-xs text-zinc-500">{lead.telefono}</p>
               )}
             </div>
-          </div>
+            <span
+              className={`shrink-0 text-zinc-400 transition-transform ${showSheet ? "rotate-180" : ""}`}
+              aria-hidden
+            >
+              ▾
+            </span>
+          </button>
+
+          {/* Datos del lead en formato hoja (estilo Excel) */}
+          {showSheet && (
+            <table className="mt-2 w-full table-fixed border-collapse text-xs">
+              <tbody>
+                {[
+                  {
+                    label: "Nombre / Empresa",
+                    value: lead.nombre || (name.startsWith("Visitante #") ? null : name),
+                  },
+                  { label: "Teléfono", value: lead.telefono },
+                  { label: "Correo", value: lead.email },
+                  {
+                    label: "Curso de interés",
+                    value: lead.intereses.length ? lead.intereses.join(", ") : null,
+                  },
+                ].map((row) => (
+                  <tr key={row.label}>
+                    <th className="w-2/5 border border-zinc-200 bg-zinc-100 px-2 py-1.5 text-left align-top font-semibold uppercase tracking-wide text-[10px] text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+                      {row.label}
+                    </th>
+                    <td className="border border-zinc-200 px-2 py-1.5 align-top text-zinc-800 dark:border-zinc-700 dark:text-zinc-200">
+                      {row.value ? (
+                        <span className="break-words">{row.value}</span>
+                      ) : (
+                        <span className="text-zinc-300 dark:text-zinc-600">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Lead score (Fase 3) */}
