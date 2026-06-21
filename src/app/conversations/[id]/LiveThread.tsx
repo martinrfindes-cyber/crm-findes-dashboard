@@ -1,77 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { Message } from "@/lib/chatwoot";
 import { clockTime, dayLabel } from "@/lib/format";
 
-const POLL_MS = 4000;
-
-/** Une mensajes dedupeando por id y los deja ordenados por fecha. */
-function mergeMessages(prev: Message[], incoming: Message[]): Message[] {
-  if (incoming.length === 0) return prev;
-  const map = new Map<number, Message>();
-  for (const m of prev) map.set(m.id, m);
-  for (const m of incoming) map.set(m.id, m);
-  return [...map.values()].sort((a, b) => a.created_at - b.created_at);
-}
-
 /**
- * Hilo de mensajes en tiempo real (Fase D). Se siembra con los mensajes
- * renderizados en el servidor y hace polling cada POLL_MS para traer los
- * nuevos sin recargar la página. Pausa el polling si la pestaña no está visible.
+ * Hilo de mensajes (Fase D). Componente presentacional: recibe los mensajes
+ * ya fusionados desde {@link ConversationView}, que es quien hace el polling y
+ * mantiene el estado. Aquí solo se renderiza y se gestiona el auto-scroll.
  */
 export default function LiveThread({
-  conversationId,
-  initialMessages,
+  messages,
+  live,
 }: {
-  conversationId: number;
-  initialMessages: Message[];
+  messages: Message[];
+  live: boolean;
 }) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [live, setLive] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const nearBottomRef = useRef(true);
-
-  // Fusiona los mensajes que vuelve a mandar el servidor (p.ej. tras enviar
-  // una respuesta y router.refresh()).
-  useEffect(() => {
-    setMessages((prev) => mergeMessages(prev, initialMessages));
-  }, [initialMessages]);
-
-  // Polling al endpoint de mensajes.
-  useEffect(() => {
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout>;
-
-    async function tick() {
-      if (document.visibilityState === "visible") {
-        try {
-          const res = await fetch(
-            `/api/conversations/${conversationId}/messages`,
-            { cache: "no-store" },
-          );
-          if (res.ok) {
-            const data = (await res.json()) as { messages?: Message[] };
-            if (!cancelled && Array.isArray(data.messages)) {
-              setMessages((prev) => mergeMessages(prev, data.messages!));
-              setLive(true);
-            }
-          } else if (!cancelled) {
-            setLive(false);
-          }
-        } catch {
-          if (!cancelled) setLive(false);
-        }
-      }
-      if (!cancelled) timer = setTimeout(tick, POLL_MS);
-    }
-
-    timer = setTimeout(tick, POLL_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [conversationId]);
 
   // Auto-scroll: si el usuario está cerca del fondo, seguir los mensajes nuevos.
   useEffect(() => {

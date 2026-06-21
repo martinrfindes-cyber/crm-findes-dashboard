@@ -108,6 +108,10 @@ export function analizarLead(messages: Message[], sender?: Sender): LeadInsights
   // Scoring por reglas.
   const razones: { texto: string; puntos: number }[] = [];
   let score = 0;
+  if (nombre) {
+    score += 15;
+    razones.push({ texto: "Dio su nombre", puntos: 15 });
+  }
   if (email) {
     score += 30;
     razones.push({ texto: "Dejó correo", puntos: 30 });
