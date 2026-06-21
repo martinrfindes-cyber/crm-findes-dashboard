@@ -291,8 +291,8 @@ function ConversationCard({
         if (menu) return;
         onOpen();
       }}
-      className={`relative cursor-grab rounded-lg border border-zinc-200 bg-white p-3 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 active:cursor-grabbing dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/60 ${
-        dragging ? "opacity-50" : ""
+      className={`relative rounded-lg border border-zinc-200 bg-white p-3 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/60 ${
+        dragging ? "cursor-grabbing opacity-50" : "cursor-pointer"
       }`}
     >
       <div className="flex items-center gap-2.5">
