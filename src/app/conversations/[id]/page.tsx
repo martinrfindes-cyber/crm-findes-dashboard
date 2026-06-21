@@ -10,9 +10,10 @@ import {
   type Message,
   type Sender,
 } from "@/lib/chatwoot";
-import { clockTime, dayLabel, initials } from "@/lib/format";
+import { initials } from "@/lib/format";
 import IaToggle from "./IaToggle";
 import ReplyBox from "./ReplyBox";
+import LiveThread from "./LiveThread";
 
 const STATUS_LABEL: Record<string, string> = {
   open: "Abierta",
@@ -119,16 +120,19 @@ export default async function ConversationPage({
             )}
           </div>
 
-          {/* Mensajes */}
-          <div className="flex-1 overflow-y-auto bg-zinc-100 px-4 py-6 dark:bg-zinc-950">
-            {loadError ? (
+          {/* Mensajes (tiempo real vía polling, Fase D) */}
+          {loadError ? (
+            <div className="flex-1 overflow-y-auto bg-zinc-100 px-4 py-6 dark:bg-zinc-950">
               <div className="mx-auto max-w-md rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
                 {loadError}
               </div>
-            ) : (
-              <MessageThread messages={messages} />
-            )}
-          </div>
+            </div>
+          ) : (
+            <LiveThread
+              conversationId={conversationId}
+              initialMessages={messages}
+            />
+          )}
 
           {/* Pie: responder como humano */}
           {!loadError && (
@@ -203,61 +207,6 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       {children}
-    </div>
-  );
-}
-
-/** Hilo de burbujas estilo chat, agrupado por día. */
-function MessageThread({ messages }: { messages: Message[] }) {
-  const visible = messages.filter((m) => m.message_type !== 2 && m.content);
-  if (visible.length === 0) {
-    return (
-      <p className="mt-8 text-center text-sm text-zinc-400">
-        No hay mensajes en esta conversación.
-      </p>
-    );
-  }
-
-  let lastDay = "";
-  return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-1.5">
-      {visible.map((m) => {
-        const incoming = m.message_type === 0;
-        const day = dayLabel(m.created_at);
-        const showDay = day !== lastDay;
-        lastDay = day;
-        return (
-          <div key={m.id}>
-            {showDay && (
-              <div className="my-3 flex justify-center">
-                <span className="rounded-full bg-zinc-200 px-3 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800">
-                  {day}
-                </span>
-              </div>
-            )}
-            <div
-              className={`flex ${incoming ? "justify-start" : "justify-end"}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
-                  incoming
-                    ? "rounded-bl-sm bg-white text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100"
-                    : "rounded-br-sm bg-emerald-600 text-white"
-                }`}
-              >
-                <p className="whitespace-pre-wrap break-words">{m.content}</p>
-                <p
-                  className={`mt-0.5 text-right text-[10px] ${
-                    incoming ? "text-zinc-400" : "text-emerald-100"
-                  }`}
-                >
-                  {clockTime(m.created_at)}
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
