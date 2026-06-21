@@ -31,3 +31,19 @@ export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2);
   return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
 }
+
+/**
+ * Texto del último mensaje legible de una conversación. Vive acá (no en
+ * chatwoot.ts, que es server-only) para poder usarse también en componentes
+ * cliente como la lista en vivo.
+ */
+export function lastMessagePreview(c: {
+  messages?: { content?: string | null }[];
+  last_non_activity_message?: { content?: string | null } | null;
+}): string {
+  const fromList = c.messages?.length
+    ? c.messages[c.messages.length - 1]?.content
+    : null;
+  const text = c.last_non_activity_message?.content ?? fromList ?? "";
+  return text?.trim() || "(sin mensajes)";
+}

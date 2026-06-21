@@ -119,13 +119,6 @@ export async function listMessages(conversationId: number): Promise<Message[]> {
   return list.sort((a, b) => a.created_at - b.created_at);
 }
 
-/** Texto del último mensaje legible de una conversación. */
-export function lastMessagePreview(c: Conversation): string {
-  const fromList = c.messages?.length ? c.messages[c.messages.length - 1]?.content : null;
-  const text = c.last_non_activity_message?.content ?? fromList ?? "";
-  return text?.trim() || "(sin mensajes)";
-}
-
 // ─── Fase C: responder como humano + toggle IA/Humano ───
 
 /**
