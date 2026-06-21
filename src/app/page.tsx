@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireSession } from "@/lib/auth";
 import {
   listConversations,
@@ -110,10 +111,11 @@ export default async function DashboardPage() {
               const name = sender?.name?.trim() || `Visitante #${c.id}`;
               const assignee = c.meta.assignee?.name;
               return (
-                <li
-                  key={c.id}
-                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-                >
+                <li key={c.id}>
+                  <Link
+                    href={`/conversations/${c.id}`}
+                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                  >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                     {initials(name)}
                   </span>
@@ -141,6 +143,7 @@ export default async function DashboardPage() {
                       <span className="text-xs text-zinc-400">👤 {assignee}</span>
                     )}
                   </div>
+                  </Link>
                 </li>
               );
             })}
