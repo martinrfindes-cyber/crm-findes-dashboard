@@ -1,23 +1,22 @@
 import { requireSession } from "@/lib/auth";
+import { chatwootConfigured, ChatwootError } from "@/lib/chatwoot";
 import {
-  listConversations,
-  chatwootConfigured,
-  ChatwootError,
-  type Conversation,
-} from "@/lib/chatwoot";
+  listConversationsWithLead,
+  type LeadConversation,
+} from "@/lib/conversation-leads";
 import { initials } from "@/lib/format";
 import LiveConversationList from "./LiveConversationList";
 
 export default async function DashboardPage() {
   const session = await requireSession();
 
-  let conversations: Conversation[] = [];
+  let conversations: LeadConversation[] = [];
   let loadError: string | null = null;
   const configured = chatwootConfigured();
 
   if (configured) {
     try {
-      conversations = await listConversations();
+      conversations = await listConversationsWithLead();
     } catch (err) {
       loadError =
         err instanceof ChatwootError
@@ -59,7 +58,7 @@ export default async function DashboardPage() {
       </header>
 
       {/* Contenido */}
-      <main className="mx-auto w-full max-w-3xl flex-1 p-4 sm:p-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6">
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Conversaciones

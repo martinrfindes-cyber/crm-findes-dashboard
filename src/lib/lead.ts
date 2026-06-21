@@ -9,6 +9,13 @@ import type { Message, Sender } from "./chatwoot";
 
 export type LeadTier = "caliente" | "tibio" | "frio";
 
+/** Resumen ligero del lead para listados/tablero (sin el detalle de razones). */
+export type LeadSummary = {
+  score: number;
+  tier: LeadTier;
+  nombre: string | null;
+};
+
 export type LeadInsights = {
   nombre: string | null;
   email: string | null;

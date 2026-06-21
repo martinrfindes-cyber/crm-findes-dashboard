@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import {
-  listConversations,
-  chatwootConfigured,
-  ChatwootError,
-} from "@/lib/chatwoot";
+import { chatwootConfigured, ChatwootError } from "@/lib/chatwoot";
+import { listConversationsWithLead } from "@/lib/conversation-leads";
 
 /**
  * Lista las conversaciones del inbox en JSON. Lo consume LiveConversationList
@@ -22,7 +19,7 @@ export async function GET() {
   }
 
   try {
-    const conversations = await listConversations();
+    const conversations = await listConversationsWithLead();
     return NextResponse.json({ conversations });
   } catch (err) {
     const status = err instanceof ChatwootError && err.status ? err.status : 500;
