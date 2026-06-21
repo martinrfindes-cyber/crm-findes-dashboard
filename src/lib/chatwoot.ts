@@ -125,3 +125,50 @@ export function lastMessagePreview(c: Conversation): string {
   const text = c.last_non_activity_message?.content ?? fromList ?? "";
   return text?.trim() || "(sin mensajes)";
 }
+
+// ─── Fase C: responder como humano + toggle IA/Humano ───
+
+/**
+ * Flag por conversación que pausa la IA (modo humano). Es un custom_attribute
+ * de la conversación: el dashboard lo setea por API y n8n lo revisará en el
+ * Filter del workflow (ruta `body.conversation.custom_attributes.ia_pausada`,
+ * a verificar en un webhook REAL antes de cablearlo en n8n).
+ */
+export const IA_PAUSED_KEY = "ia_pausada";
+
+/** True si la IA está pausada para esta conversación (modo humano). */
+export function isIaPaused(c: Conversation): boolean {
+  return Boolean(c.custom_attributes?.[IA_PAUSED_KEY]);
+}
+
+/** Envía un mensaje saliente como agente humano a la conversación. */
+export async function sendAgentMessage(
+  conversationId: number,
+  content: string,
+): Promise<Message> {
+  return api<Message>(`/conversations/${conversationId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ content, message_type: "outgoing" }),
+  });
+}
+
+/**
+ * Pausa o reactiva la IA para una conversación. El endpoint de Chatwoot
+ * REEMPLAZA todo el objeto custom_attributes, así que primero leemos los
+ * actuales y los fusionamos para no borrar los datos de lead (ruta_interes,
+ * origen, curso, etc.).
+ */
+export async function setIaPaused(
+  conversationId: number,
+  paused: boolean,
+): Promise<void> {
+  const conv = await getConversation(conversationId);
+  const merged = {
+    ...(conv.custom_attributes ?? {}),
+    [IA_PAUSED_KEY]: paused,
+  };
+  await api(`/conversations/${conversationId}/custom_attributes`, {
+    method: "POST",
+    body: JSON.stringify({ custom_attributes: merged }),
+  });
+}

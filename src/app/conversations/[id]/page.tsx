@@ -5,11 +5,14 @@ import {
   getConversation,
   listMessages,
   chatwootConfigured,
+  isIaPaused,
   ChatwootError,
   type Message,
   type Sender,
 } from "@/lib/chatwoot";
 import { clockTime, dayLabel, initials } from "@/lib/format";
+import IaToggle from "./IaToggle";
+import ReplyBox from "./ReplyBox";
 
 const STATUS_LABEL: Record<string, string> = {
   open: "Abierta",
@@ -63,6 +66,7 @@ export default async function ConversationPage({
   let messages: Message[] = [];
   let sender: Sender | undefined;
   let status = "open";
+  let iaPaused = false;
   let leadAttrs: { key: string; label: string; value: string }[] = [];
   let loadError: string | null = null;
 
@@ -74,6 +78,7 @@ export default async function ConversationPage({
     messages = msgs;
     sender = conv.meta.sender;
     status = conv.status;
+    iaPaused = isIaPaused(conv);
     // Solo custom_attributes (datos de lead que setea el widget/IA: ruta_interes,
     // origen, curso, etc.). Se omite additional_attributes a propósito: ahí Chatwoot
     // guarda telemetría del navegador (Browser, Referer, idioma…), no datos de lead.
@@ -98,7 +103,7 @@ export default async function ConversationPage({
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
               {initials(name)}
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 {name}
               </p>
@@ -106,6 +111,12 @@ export default async function ConversationPage({
                 {STATUS_LABEL[status] ?? status} · #{conversationId}
               </p>
             </div>
+            {!loadError && (
+              <IaToggle
+                conversationId={conversationId}
+                initialPaused={iaPaused}
+              />
+            )}
           </div>
 
           {/* Mensajes */}
@@ -119,10 +130,10 @@ export default async function ConversationPage({
             )}
           </div>
 
-          {/* Pie: responder llega en la Fase C */}
-          <div className="border-t border-zinc-200 bg-white px-4 py-3 text-center text-xs text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900">
-            Responder como humano y el toggle IA/Humano llegan en la Fase C.
-          </div>
+          {/* Pie: responder como humano */}
+          {!loadError && (
+            <ReplyBox conversationId={conversationId} iaActive={!iaPaused} />
+          )}
         </section>
 
         {/* Panel del lead */}
