@@ -19,6 +19,10 @@ export type LeadSummary = {
   /** True si el tier viene de un override manual (movido en el tablero). */
   manual: boolean;
   nombre: string | null;
+  /** Datos de contacto extraídos, útiles para exportar el lead a CSV. */
+  email: string | null;
+  telefono: string | null;
+  intereses: string[];
 };
 
 /** Type guard para validar un tier que llega como string (custom_attribute/form). */

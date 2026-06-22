@@ -16,6 +16,9 @@ const FRIO: LeadSummary = {
   tierAuto: "frio",
   manual: false,
   nombre: null,
+  email: null,
+  telefono: null,
+  intereses: [],
 };
 
 /**
@@ -42,6 +45,9 @@ export async function listConversationsWithLead(): Promise<LeadConversation[]> {
             tierAuto: auto.tier,
             manual: override !== null,
             nombre: auto.nombre,
+            email: auto.email,
+            telefono: auto.telefono,
+            intereses: auto.intereses,
           },
         };
       } catch {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { LeadConversation } from "@/lib/conversation-leads";
 import type { LeadTier } from "@/lib/lead";
 import { timeAgo, initials, lastMessagePreview } from "@/lib/format";
+import { leadsToCsv, downloadCsv, type LeadRow } from "@/lib/csv";
 import { moveLeadTier } from "./actions";
 
 const POLL_MS = 5000;
@@ -145,6 +146,26 @@ export default function LiveConversationList({
     }
   }
 
+  // Filas de leads (con el tier efectivo ya resuelto) para exportar a CSV.
+  // Sin `tier` arma todas; con `tier` solo esa columna.
+  function leadRows(tier?: LeadTier): LeadRow[] {
+    return conversations
+      .map((c) => {
+        const { tier: t, manual } = effectiveTier(c);
+        return { c, tier: t, manual };
+      })
+      .filter((r) => !tier || r.tier === tier)
+      .sort((a, b) => b.c.lead.score - a.c.lead.score);
+  }
+
+  function exportCsv(tier?: LeadTier) {
+    const rows = leadRows(tier);
+    if (rows.length === 0) return;
+    const date = new Date().toISOString().slice(0, 10);
+    const name = tier ? `leads-${tier}-${date}.csv` : `leads-${date}.csv`;
+    downloadCsv(name, leadsToCsv(rows));
+  }
+
   if (conversations.length === 0) {
     return (
       <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
@@ -160,10 +181,21 @@ export default function LiveConversationList({
           {error}
         </p>
       )}
-      <p className="mb-3 text-xs text-zinc-400">
-        Arrastrá una tarjeta a otra columna —o usá el menú ⋯— para fijar su
-        temperatura a mano.
-      </p>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-xs text-zinc-400">
+          Arrastrá una tarjeta a otra columna —o usá el menú ⋯— para fijar su
+          temperatura a mano.
+        </p>
+        <button
+          type="button"
+          onClick={() => exportCsv()}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          title="Descargar todos los leads en un CSV"
+        >
+          <span aria-hidden>⬇️</span>
+          Exportar CSV ({conversations.length})
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {COLUMNS.map((col) => {
@@ -196,8 +228,21 @@ export default function LiveConversationList({
                   <span aria-hidden>{col.emoji}</span>
                   {col.label}
                 </span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${col.badge}`}>
-                  {items.length}
+                <span className="flex items-center gap-1.5">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${col.badge}`}>
+                    {items.length}
+                  </span>
+                  {items.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => exportCsv(col.tier)}
+                      title={`Exportar leads "${col.label}" a CSV`}
+                      aria-label={`Exportar leads ${col.label} a CSV`}
+                      className="rounded-md px-1 text-zinc-400 transition-colors hover:bg-zinc-200/60 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                    >
+                      ⬇️
+                    </button>
+                  )}
                 </span>
               </header>
 
