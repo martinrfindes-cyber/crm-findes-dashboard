@@ -45,9 +45,23 @@ const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
 // Secuencias tipo teléfono (con o sin lada +52 y separadores).
 const PHONE_RE = /(\+?52[\s-]?)?(\(?\d{2,3}\)?[\s-]?)?\d{3,4}[\s-]?\d{4}/g;
 
-// "me llamo X", "mi nombre es X", "soy X" → captura 1-2 palabras capitalizadas.
-const NAME_RE =
-  /\b(?:me llamo|mi nombre es|mi nombre|soy|nombre:?)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]{1,}(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{1,})?)/;
+// Etiqueta explícita ("me llamo X", "mi nombre es X", "nombre: X"): el nombre va
+// justo después; lo aceptamos en cualquier caso (la gente escribe "martin" en el
+// chat) y lo capitalizamos al mostrarlo. Captura 1-2 palabras de letras.
+const NAME_LABEL_RE =
+  /\b(?:me llamo|mi nombre es|mi nombre|nombre:?)\s+([a-záéíóúñ]{2,}(?:\s+[a-záéíóúñ]{2,})?)/i;
+
+// "soy X": más ambiguo (soy de Monterrey, soy estudiante…); aquí sí exigimos que
+// el nombre vaya capitalizado para no capturar palabras comunes en minúscula.
+const NAME_SOY_RE =
+  /\bsoy\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]{1,}(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{1,})?)/;
+
+/** Capitaliza la inicial de cada palabra ("martin perez" → "Martin Perez"). */
+function capitalizar(nombre: string): string {
+  return nombre
+    .toLowerCase()
+    .replace(/(^|\s)([a-záéíóúñ])/g, (_, sep, c) => sep + c.toUpperCase());
+}
 
 // Catálogo de intereses típicos de FINDES (curso/área).
 const INTERESES: { label: string; re: RegExp }[] = [
@@ -98,8 +112,8 @@ function buscarTelefono(textos: string[]): string | null {
 function buscarNombre(textos: string[], sender?: Sender): string | null {
   if (sender?.name && !esNombreAuto(sender.name)) return sender.name.trim();
   for (const t of textos) {
-    const m = t.match(NAME_RE);
-    if (m) return m[1].trim();
+    const m = t.match(NAME_LABEL_RE) ?? t.match(NAME_SOY_RE);
+    if (m) return capitalizar(m[1].trim());
   }
   return null;
 }
