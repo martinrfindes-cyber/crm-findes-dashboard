@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "instanceId": "findes"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Extrae nombre / telefono / correo del mensaje entrante y arma el parche\n// para actualizar el contacto en Chatwoot. Si no hay nada nuevo que guardar,\n// devuelve [] y el nodo \"Actualizar contacto\" no se ejecuta.\nconst body = $input.first().json.body || {};\nconst texto = (body.content || '').toString();\n\n// id del contacto (rutas tipicas del webhook de Chatwoot)\nconst contactId =\n  body?.sender?.id ??\n  body?.conversation?.meta?.sender?.id ??\n  body?.conversation?.contact_inbox?.contact_id;\n\n// --- Nombre ---\nconst NAME_LABEL_RE = /\\b(?:me llamo|mi nombre es|mi nombre|nombre:?)\\s+([a-záéíóúñ]{2,}(?:\\s+[a-záéíóúñ]{2,})?)/i;\nconst NAME_SOY_RE   = /\\bsoy\\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]{1,}(?:\\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{1,})?)/;\nconst capitalizar = (n) => n.toLowerCase().replace(/(^|\\s)([a-záéíóúñ])/g, (_, s, c) => s + c.toUpperCase());\nconst mName = texto.match(NAME_LABEL_RE) || texto.match(NAME_SOY_RE);\nconst nombre = mName ? capitalizar(mName[1].trim()) : null;\n\n// --- Telefono MX (10 digitos -> +52...) ---\nconst PHONE_RE = /(\\+?52[\\s-]?)?(\\(?\\d{2,3}\\)?[\\s-]?)?\\d{3,4}[\\s-]?\\d{4}/g;\nlet telefono = null;\nfor (const c of (texto.match(PHONE_RE) || [])) {\n  let d = c.replace(/\\D/g, '');\n  if (d.length === 13 && d.startsWith('521')) d = d.slice(3);\n  else if (d.length === 12 && d.startsWith('52')) d = d.slice(2);\n  if (d.length === 10) { telefono = '+52' + d; break; }\n}\n\n// --- Correo ---\nconst mMail = texto.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/);\nconst email = mMail ? mMail[0] : null;\n\n// Solo guardamos lo que si encontramos\nconst patch = {};\nif (nombre)   patch.name = nombre;\nif (telefono) patch.phone_number = telefono;\nif (email)    patch.email = email;\n\nif (!contactId || Object.keys(patch).length === 0) return [];\nreturn [{ json: { contactId, patch } }];"
+      },
+      "id": "a1b2c3d4-0001-4a1a-9aaa-000000000001",
+      "name": "Extraer datos del lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://findes-chatwoot.7yidoh.easypanel.host/api/v1/accounts/2/contacts/{{ $json.contactId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "PEGA_AQUI_TU_TOKEN_DE_CHATWOOT"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.patch) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-4a1a-9aaa-000000000002",
+      "name": "Actualizar contacto en Chatwoot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Extraer datos del lead": {
+      "main": [
+        [
+          {
+            "node": "Actualizar contacto en Chatwoot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
