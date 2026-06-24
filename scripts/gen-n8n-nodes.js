@@ -4,16 +4,25 @@ const fs = require("fs");
 const path = require("path");
 
 const jsCode = String.raw`// Extrae nombre / telefono / correo del mensaje entrante y arma el parche
-// para actualizar el contacto en Chatwoot. Si no hay nada nuevo que guardar,
-// devuelve [] y el nodo "Actualizar contacto" no se ejecuta.
+// para actualizar el contacto en Chatwoot. Version BLINDADA:
+//  - No sobrescribe datos buenos: solo rellena lo que el contacto tenga vacio.
+//  - Si no hay nada nuevo que guardar, devuelve [] (el nodo HTTP no corre).
 const body = $input.first().json.body || {};
 const texto = (body.content || '').toString();
+const sender = body.sender || {};
 
 // id del contacto (rutas tipicas del webhook de Chatwoot)
 const contactId =
-  body?.sender?.id ??
+  sender.id ??
   body?.conversation?.meta?.sender?.id ??
   body?.conversation?.contact_inbox?.contact_id;
+
+// True si el nombre actual es autogenerado por Chatwoot (no es un nombre real).
+function esNombreAuto(name) {
+  if (!name) return true;
+  const n = String(name).trim();
+  return /^[a-z]+-[a-z]+-\d+$/.test(n) || /^visitante/i.test(n);
+}
 
 // --- Nombre ---
 const NAME_LABEL_RE = /\b(?:me llamo|mi nombre es|mi nombre|nombre:?)\s+([a-záéíóúñ]{2,}(?:\s+[a-záéíóúñ]{2,})?)/i;
@@ -36,11 +45,12 @@ for (const c of (texto.match(PHONE_RE) || [])) {
 const mMail = texto.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
 const email = mMail ? mMail[0] : null;
 
-// Solo guardamos lo que si encontramos
+// Solo guardamos lo que encontramos Y que el contacto aun no tenga.
+// (asi no pisamos un nombre/telefono/correo que ya estaba bien)
 const patch = {};
-if (nombre)   patch.name = nombre;
-if (telefono) patch.phone_number = telefono;
-if (email)    patch.email = email;
+if (nombre   && esNombreAuto(sender.name)) patch.name = nombre;
+if (telefono && !sender.phone_number)      patch.phone_number = telefono;
+if (email    && !sender.email)             patch.email = email;
 
 if (!contactId || Object.keys(patch).length === 0) return [];
 return [{ json: { contactId, patch } }];`;
@@ -76,6 +86,8 @@ const clip = {
       type: "n8n-nodes-base.httpRequest",
       typeVersion: 4.2,
       position: [560, 480],
+      // Si Chatwoot rechaza (ej. telefono/correo repetido), no truena la ejecucion.
+      onError: "continueRegularOutput",
     },
   ],
   connections: {
