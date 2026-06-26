@@ -54,7 +54,7 @@ const NAME_LABEL_RE =
 // "soy X": más ambiguo (soy de Monterrey, soy estudiante…); aquí sí exigimos que
 // el nombre vaya capitalizado para no capturar palabras comunes en minúscula.
 const NAME_SOY_RE =
-  /\bsoy\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]{1,}(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{1,})?)/;
+  /\b[Ss]oy\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]{1,}(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{1,})?)/;
 
 /** Capitaliza la inicial de cada palabra ("martin perez" → "Martin Perez"). */
 function capitalizar(nombre: string): string {
