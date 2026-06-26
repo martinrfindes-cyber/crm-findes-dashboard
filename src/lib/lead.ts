@@ -118,13 +118,36 @@ function buscarNombre(textos: string[], sender?: Sender): string | null {
   return null;
 }
 
+// Niveles que la gente menciona junto al curso ("excel avanzado", "inglés básico").
+const NIVEL_RE = /\b(b[aá]sic[oa]|inicial|intermedi[oa]|avanzad[oa])\b/i;
+
+/** Normaliza la palabra de nivel a una etiqueta ("avanzada" → "Avanzado"). */
+function etiquetaNivel(palabra: string): string {
+  const n = palabra.toLowerCase();
+  if (n.startsWith("interm")) return "Intermedio";
+  if (n.startsWith("avanz")) return "Avanzado";
+  return "Básico"; // básico / básica / inicial
+}
+
 function buscarIntereses(textos: string[]): string[] {
   const blob = textos.join(" \n ");
-  const out: string[] = [];
+
+  // Posición de cada curso mencionado, ordenados por aparición.
+  const hits: { label: string; start: number; end: number }[] = [];
   for (const { label, re } of INTERESES) {
-    if (re.test(blob)) out.push(label);
+    const m = re.exec(blob);
+    if (m) hits.push({ label, start: m.index, end: m.index + m[0].length });
   }
-  return out;
+  hits.sort((a, b) => a.start - b.start);
+
+  // En español el nivel va tras el curso ("excel avanzado"). Miramos hacia
+  // adelante, pero sin pasar del siguiente curso para que no se contagie.
+  return hits.map((h, i) => {
+    const tope = i + 1 < hits.length ? hits[i + 1].start : blob.length;
+    const ventana = blob.slice(h.end, Math.min(h.end + 25, tope));
+    const m = ventana.match(NIVEL_RE);
+    return m ? `${h.label} ${etiquetaNivel(m[1])}` : h.label;
+  });
 }
 
 /** Extrae campos del lead y calcula su score a partir de la conversación. */
