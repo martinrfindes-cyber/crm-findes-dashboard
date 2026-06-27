@@ -109,13 +109,54 @@ function buscarTelefono(textos: string[]): string | null {
   return null;
 }
 
-function buscarNombre(textos: string[], sender?: Sender): string | null {
+// El bot pide el nombre ("¿me compartes tu nombre?", "¿cómo te llamas?").
+const PIDE_NOMBRE_RE = /\b(tu nombre|c[oó]mo te llamas|cu[aá]l es tu nombre)\b/i;
+
+// Algo que "parece nombre": 1-3 palabras solo de letras (sin dígitos, @, etc.).
+const PARECE_NOMBRE_RE = /^[a-záéíóúñ]{2,}(?:\s+[a-záéíóúñ]{2,}){0,2}$/i;
+
+// Respuestas comunes que NO son un nombre, aunque sean solo letras.
+const NO_ES_NOMBRE = new Set([
+  "si", "sí", "no", "ok", "okay", "hola", "gracias", "ambas", "ambos",
+  "claro", "dale", "listo", "bien", "perfecto", "ninguno", "ninguna",
+  "nada", "tal vez", "quiza", "quizá", "online", "presencial",
+]);
+
+/**
+ * Nombre por contexto: si el bot pidió el nombre, la siguiente respuesta del
+ * visitante suele ser justo el nombre, aunque venga sin "soy"/"me llamo"
+ * (ej. el bot pregunta "¿tu nombre?" y la persona contesta "Ana Pérez").
+ */
+function nombrePorContexto(messages: Message[]): string | null {
+  for (let i = 0; i < messages.length - 1; i++) {
+    const m = messages[i];
+    if (m.message_type !== 1 || !m.content || !PIDE_NOMBRE_RE.test(m.content)) continue;
+    // Evaluamos solo la primera respuesta del visitante tras la pregunta.
+    for (let j = i + 1; j < messages.length; j++) {
+      const r = messages[j];
+      if (r.message_type !== 0 || !r.content) continue;
+      const cand = r.content.trim().replace(/[.,!¡¿?]+$/g, "").trim();
+      if (PARECE_NOMBRE_RE.test(cand) && !NO_ES_NOMBRE.has(cand.toLowerCase())) {
+        return capitalizar(cand);
+      }
+      break;
+    }
+  }
+  return null;
+}
+
+function buscarNombre(messages: Message[], sender?: Sender): string | null {
   if (sender?.name && !esNombreAuto(sender.name)) return sender.name.trim();
+  const textos = messages
+    .filter((m) => m.message_type === 0 && m.content)
+    .map((m) => m.content as string);
+  // 1) Con palabra gatillo: "me llamo X", "soy X".
   for (const t of textos) {
     const m = t.match(NAME_LABEL_RE) ?? t.match(NAME_SOY_RE);
     if (m) return capitalizar(m[1].trim());
   }
-  return null;
+  // 2) Por contexto: el bot preguntó el nombre y el visitante respondió.
+  return nombrePorContexto(messages);
 }
 
 // Niveles que la gente menciona junto al curso ("excel avanzado", "inglés básico").
@@ -159,7 +200,7 @@ export function analizarLead(messages: Message[], sender?: Sender): LeadInsights
   const email = buscarEmail(textosVisitante) ?? sender?.email?.trim() ?? null;
   const telefono =
     buscarTelefono(textosVisitante) ?? sender?.phone_number?.trim() ?? null;
-  const nombre = buscarNombre(textosVisitante, sender);
+  const nombre = buscarNombre(messages, sender);
   const intereses = buscarIntereses(textosVisitante);
   const nVisitante = textosVisitante.length;
 
