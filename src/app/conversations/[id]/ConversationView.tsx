@@ -184,7 +184,7 @@ export default function ConversationView({
       </section>
 
       {/* Panel del lead */}
-      <aside className="hidden w-72 shrink-0 flex-col gap-4 overflow-y-auto border-l border-zinc-200 bg-white p-4 lg:flex dark:border-zinc-800 dark:bg-zinc-900">
+      <aside className="hidden w-[28rem] shrink-0 flex-col gap-4 overflow-y-auto border-l border-zinc-200 bg-white p-4 lg:flex dark:border-zinc-800 dark:bg-zinc-900">
         <div>
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
             Lead
