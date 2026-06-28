@@ -6,7 +6,7 @@ import type { LeadConversation } from "@/lib/conversation-leads";
 import type { LeadTier } from "@/lib/lead";
 import { timeAgo, initials, lastMessagePreview } from "@/lib/format";
 import { leadsToCsv, downloadCsv, type LeadRow } from "@/lib/csv";
-import { moveLeadTier } from "./actions";
+import { moveLeadTier, deleteLeads } from "./actions";
 
 const POLL_MS = 5000;
 
@@ -146,6 +146,21 @@ export default function LiveConversationList({
     }
   }
 
+  // Borra leads (uno o varios): los saca al instante del tablero y los elimina
+  // en Chatwoot. Si algo falla, restaura la lista y muestra el error.
+  async function remove(ids: number[]) {
+    if (ids.length === 0) return;
+    setError(null);
+    const snapshot = conversations;
+    const toDelete = new Set(ids);
+    setConversations((prev) => prev.filter((c) => !toDelete.has(c.id)));
+    const res = await deleteLeads(ids);
+    if (!res.ok) {
+      setConversations(snapshot);
+      setError(res.error);
+    }
+  }
+
   // Filas de leads (con el tier efectivo ya resuelto) para exportar a CSV.
   // Sin `tier` arma todas; con `tier` solo esa columna.
   function leadRows(tier?: LeadTier): LeadRow[] {
@@ -233,15 +248,35 @@ export default function LiveConversationList({
                     {items.length}
                   </span>
                   {items.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => exportCsv(col.tier)}
-                      title={`Exportar leads "${col.label}" a CSV`}
-                      aria-label={`Exportar leads ${col.label} a CSV`}
-                      className="rounded-md px-1 text-zinc-400 transition-colors hover:bg-zinc-200/60 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                    >
-                      ⬇️
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => exportCsv(col.tier)}
+                        title={`Exportar leads "${col.label}" a CSV`}
+                        aria-label={`Exportar leads ${col.label} a CSV`}
+                        className="rounded-md px-1 text-zinc-400 transition-colors hover:bg-zinc-200/60 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                      >
+                        ⬇️
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const ids = items.map((x) => x.c.id);
+                          if (
+                            window.confirm(
+                              `¿Borrar los ${ids.length} leads de la columna "${col.label}"? Esta acción es permanente.`,
+                            )
+                          ) {
+                            remove(ids);
+                          }
+                        }}
+                        title={`Borrar todos los leads "${col.label}"`}
+                        aria-label={`Borrar todos los leads ${col.label}`}
+                        className="rounded-md px-1 text-zinc-400 transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950/50 dark:hover:text-red-400"
+                      >
+                        🗑️
+                      </button>
+                    </>
                   )}
                 </span>
               </header>
@@ -274,6 +309,19 @@ export default function LiveConversationList({
                       }}
                       wasDragged={() => draggedRef.current}
                       onMove={(t) => move(c.id, t)}
+                      onDelete={() => {
+                        if (
+                          window.confirm(
+                            `¿Borrar el lead "${
+                              c.lead.nombre ||
+                              c.meta.sender?.name?.trim() ||
+                              `Visitante #${c.id}`
+                            }"? Esta acción es permanente.`,
+                          )
+                        ) {
+                          remove([c.id]);
+                        }
+                      }}
                     />
                   ))
                 )}
@@ -296,6 +344,7 @@ function ConversationCard({
   onDragEnd,
   wasDragged,
   onMove,
+  onDelete,
 }: {
   c: LeadConversation;
   tier: LeadTier;
@@ -306,6 +355,7 @@ function ConversationCard({
   onDragEnd: () => void;
   wasDragged: () => boolean;
   onMove: (target: Override) => void;
+  onDelete: () => void;
 }) {
   const [menu, setMenu] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -439,6 +489,19 @@ function ConversationCard({
             <span aria-hidden>🤖</span>
             Automático
             {!manual && <span className="ml-auto text-xs text-zinc-400">✓</span>}
+          </button>
+          <div className="my-1 border-t border-zinc-100 dark:border-zinc-800" />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenu(false);
+              onDelete();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+          >
+            <span aria-hidden>🗑️</span>
+            Borrar lead
           </button>
         </div>
       )}

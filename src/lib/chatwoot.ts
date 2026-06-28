@@ -188,3 +188,12 @@ export async function setLeadTier(
     body: JSON.stringify({ custom_attributes: merged }),
   });
 }
+
+/**
+ * Borra una conversación en Chatwoot de forma permanente. La usa el tablero
+ * para limpiar leads viejos (individualmente o por columna) y que la base no
+ * crezca sin control. Es irreversible.
+ */
+export async function deleteConversation(conversationId: number): Promise<void> {
+  await api(`/conversations/${conversationId}`, { method: "DELETE" });
+}
